@@ -15,6 +15,7 @@ import subprocess
 import tempfile
 import io
 from dotenv import load_dotenv
+import threading
 
 # Load environment variables
 load_dotenv()
@@ -381,107 +382,109 @@ def process_stems(song_id):
             'cached': True
         })
     
-    try:
-        # Mark as processing
-        song.processing_stems = True
-        song.stem_error = "Preparing audio file for processing..."
-        db.session.commit()
-        
-        # Get the full path of the audio file
-        audio_path = os.path.join(app.config['UPLOAD_FOLDER'], song.filename)
-        
-        # Create output directory for stems
-        stem_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'stems', str(song.id))
-        os.makedirs(stem_dir, exist_ok=True)
-        
-        # Update status
-        song.stem_error = "Initializing AI model for stem separation..."
-        db.session.commit()
-        
-        # Open and read the audio file
-        with open(audio_path, 'rb') as audio_file:
-            # Run Replicate API with optimized parameters
-            song.stem_error = "Running AI model for stem separation (this may take several minutes)..."
+    # Mark as processing
+    song.processing_stems = True
+    song.stem_error = "Preparing audio file for processing..."
+    db.session.commit()
+
+    def process_stems_async():
+        try:
+            # Get the full path of the audio file
+            audio_path = os.path.join(app.config['UPLOAD_FOLDER'], song.filename)
+            
+            # Create output directory for stems
+            stem_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'stems', str(song.id))
+            os.makedirs(stem_dir, exist_ok=True)
+            
+            # Update status
+            song.stem_error = "Initializing AI model for stem separation..."
             db.session.commit()
             
-            output = replicate.run(
-                "ryan5453/demucs:7a9db77ed93f8f4f7e233a94d8519a867fbaa9c6d16ea5b53c1394f1557f9c61",
-                input={
-                    "jobs": 0,
-                    "audio": audio_file,
-                    "stem": "none",  # Always process all stems
-                    "model": "htdemucs_6s",  # Using 6-stem model
-                    "split": True,
-                    "shifts": 1,
-                    "overlap": 0.25,
-                    "clip_mode": "rescale",
-                    "mp3_preset": 2,
-                    "wav_format": "int24",
-                    "mp3_bitrate": 320,
-                    "output_format": "mp3",
-                }
-            )
-        
-        # Process and save all stems
-        stem_types = ['vocals', 'drums', 'bass', 'other', 'piano', 'guitar']
-        total_stems = len(stem_types)
-        for i, stem_type in enumerate(stem_types, 1):
-            if stem_type in output and output[stem_type]:
-                song.stem_error = f"Downloading {stem_type.capitalize()} stem ({i}/{total_stems})..."
+            # Open and read the audio file
+            with open(audio_path, 'rb') as audio_file:
+                # Run Replicate API with optimized parameters
+                song.stem_error = "Running AI model for stem separation (this may take several minutes)..."
                 db.session.commit()
                 
-                # Download and save stem
-                response = requests.get(output[stem_type], timeout=30)
-                response.raise_for_status()
-                
-                stem_filename = f"{os.path.splitext(song.filename)[0]}_{stem_type}.mp3"
-                stem_path = os.path.join(stem_dir, stem_filename)
-                
-                with open(stem_path, 'wb') as f:
-                    f.write(response.content)
-                
-                setattr(song, f"{stem_type}_stem", stem_filename)
-                
-                # For vocals, also save instrumental
-                if stem_type == 'vocals' and 'no_vocals' in output:
-                    song.stem_error = "Downloading instrumental track..."
+                output = replicate.run(
+                    "ryan5453/demucs:7a9db77ed93f8f4f7e233a94d8519a867fbaa9c6d16ea5b53c1394f1557f9c61",
+                    input={
+                        "jobs": 0,
+                        "audio": audio_file,
+                        "stem": "none",  # Always process all stems
+                        "model": "htdemucs_6s",  # Using 6-stem model
+                        "split": True,
+                        "shifts": 1,
+                        "overlap": 0.25,
+                        "clip_mode": "rescale",
+                        "mp3_preset": 2,
+                        "wav_format": "int24",
+                        "mp3_bitrate": 320,
+                        "output_format": "mp3",
+                    }
+                )
+            
+            # Process and save all stems
+            stem_types = ['vocals', 'drums', 'bass', 'other', 'piano', 'guitar']
+            total_stems = len(stem_types)
+            for i, stem_type in enumerate(stem_types, 1):
+                if stem_type in output and output[stem_type]:
+                    song.stem_error = f"Downloading {stem_type.capitalize()} stem ({i}/{total_stems})..."
                     db.session.commit()
                     
-                    response = requests.get(output['no_vocals'], timeout=30)
+                    # Download and save stem
+                    response = requests.get(output[stem_type], timeout=30)
                     response.raise_for_status()
                     
-                    inst_filename = f"{os.path.splitext(song.filename)[0]}_instrumental.mp3"
-                    inst_path = os.path.join(stem_dir, inst_filename)
+                    stem_filename = f"{os.path.splitext(song.filename)[0]}_{stem_type}.mp3"
+                    stem_path = os.path.join(stem_dir, stem_filename)
                     
-                    with open(inst_path, 'wb') as f:
+                    with open(stem_path, 'wb') as f:
                         f.write(response.content)
-        
-        # Mark processing as complete
-        song.has_stems = True
-        song.processing_stems = False
-        song.stem_error = None
-        db.session.commit()
-        
-        return jsonify({
-            'status': 'success',
-            'message': 'Stems processed successfully'
-        })
-        
-    except Exception as e:
-        error_message = str(e)
-        if "exceeded the rate limit" in error_message.lower():
-            error_message = "Rate limit exceeded. Please try again in a few minutes."
-        elif "invalid api key" in error_message.lower():
-            error_message = "API configuration error. Please contact support."
-        
-        song.processing_stems = False
-        song.stem_error = error_message
-        db.session.commit()
-        app.logger.error(f"Stem processing error for song {song_id}: {error_message}")
-        return jsonify({
-            'status': 'error',
-            'message': error_message
-        }), 500
+                    
+                    setattr(song, f"{stem_type}_stem", stem_filename)
+                    
+                    # For vocals, also save instrumental
+                    if stem_type == 'vocals' and 'no_vocals' in output:
+                        song.stem_error = "Downloading instrumental track..."
+                        db.session.commit()
+                        
+                        response = requests.get(output['no_vocals'], timeout=30)
+                        response.raise_for_status()
+                        
+                        inst_filename = f"{os.path.splitext(song.filename)[0]}_instrumental.mp3"
+                        inst_path = os.path.join(stem_dir, inst_filename)
+                        
+                        with open(inst_path, 'wb') as f:
+                            f.write(response.content)
+            
+            # Mark processing as complete
+            song.has_stems = True
+            song.processing_stems = False
+            song.stem_error = None
+            db.session.commit()
+            
+        except Exception as e:
+            error_message = str(e)
+            if "exceeded the rate limit" in error_message.lower():
+                error_message = "Rate limit exceeded. Please try again in a few minutes."
+            elif "invalid api key" in error_message.lower():
+                error_message = "API configuration error. Please contact support."
+            
+            song.processing_stems = False
+            song.stem_error = error_message
+            db.session.commit()
+            app.logger.error(f"Stem processing error for song {song_id}: {error_message}")
+
+    # Start processing in background thread
+    thread = threading.Thread(target=process_stems_async)
+    thread.daemon = True
+    thread.start()
+    
+    return jsonify({
+        'status': 'processing',
+        'message': 'Stem processing started'
+    })
 
 @app.route('/stem_status/<int:song_id>')
 @login_required

@@ -39,9 +39,19 @@
                                 <i class="fas fa-guitar me-2"></i>Bass
                             </a>
                             {% endif %}
+                            {% if song.guitar_stem %}
+                            <a href="{{ url_for('download_stem', song_id=song.id, stem_type='guitar') }}" class="list-group-item list-group-item-action">
+                                <i class="fas fa-guitar me-2"></i>Guitar
+                            </a>
+                            {% endif %}
+                            {% if song.piano_stem %}
+                            <a href="{{ url_for('download_stem', song_id=song.id, stem_type='piano') }}" class="list-group-item list-group-item-action">
+                                <i class="fas fa-music me-2"></i>Piano <small class="text-muted">(experimental)</small>
+                            </a>
+                            {% endif %}
                             {% if song.other_stem %}
                             <a href="{{ url_for('download_stem', song_id=song.id, stem_type='other') }}" class="list-group-item list-group-item-action">
-                                <i class="fas fa-music me-2"></i>Other/Instrumental
+                                <i class="fas fa-music me-2"></i>Other
                             </a>
                             {% endif %}
                         </div>
@@ -76,11 +86,27 @@
                                         </label>
                                     </div>
                                     {% endif %}
+                                    {% if song.guitar_stem %}
+                                    <div class="mb-2">
+                                        <input class="form-check-input" type="checkbox" name="stems[]" value="guitar" id="guitarCheck">
+                                        <label class="form-check-label" for="guitarCheck">
+                                            <i class="fas fa-guitar me-2"></i>Guitar
+                                        </label>
+                                    </div>
+                                    {% endif %}
+                                    {% if song.piano_stem %}
+                                    <div class="mb-2">
+                                        <input class="form-check-input" type="checkbox" name="stems[]" value="piano" id="pianoCheck">
+                                        <label class="form-check-label" for="pianoCheck">
+                                            <i class="fas fa-music me-2"></i>Piano <small class="text-muted">(experimental)</small>
+                                        </label>
+                                    </div>
+                                    {% endif %}
                                     {% if song.other_stem %}
                                     <div class="mb-2">
                                         <input class="form-check-input" type="checkbox" name="stems[]" value="other" id="otherCheck">
                                         <label class="form-check-label" for="otherCheck">
-                                            <i class="fas fa-music me-2"></i>Other/Instrumental
+                                            <i class="fas fa-music me-2"></i>Other
                                         </label>
                                     </div>
                                     {% endif %}
@@ -134,12 +160,99 @@
                     <div class="mb-4">
                         <h5>Stem Separation</h5>
                         <p>Split this song into separate instrument tracks.</p>
-                        <form action="{{ url_for('process_stems', song_id=song.id) }}" method="POST">
+                        <form id="processStemsForm" action="{{ url_for('process_stems', song_id=song.id) }}" method="POST">
                             <button type="submit" class="btn btn-primary" id="processStemsBtn">
-                                <i class="fas fa-layer-group me-2"></i>Process Stems
+                                <span class="normal-state">
+                                    <i class="fas fa-layer-group me-2"></i>Process Stems
+                                </span>
+                                <span class="loading-state d-none">
+                                    <i class="fas fa-spinner fa-spin me-2"></i>Processing...
+                                </span>
                             </button>
                         </form>
+                        <div id="stemProcessingStatus" class="alert alert-info mt-3 d-none">
+                            <i class="fas fa-spinner fa-spin me-2"></i>
+                            <span id="stemProcessingMessage">Initializing stem separation...</span>
+                        </div>
                     </div>
+
+                    <script>
+                    document.getElementById('processStemsForm').addEventListener('submit', async function(e) {
+                        e.preventDefault();
+                        
+                        const btn = document.getElementById('processStemsBtn');
+                        const status = document.getElementById('stemProcessingStatus');
+                        const statusMessage = document.getElementById('stemProcessingMessage');
+                        
+                        // Show loading state
+                        btn.disabled = true;
+                        btn.querySelector('.normal-state').classList.add('d-none');
+                        btn.querySelector('.loading-state').classList.remove('d-none');
+                        status.classList.remove('d-none');
+
+                        try {
+                            const response = await fetch(this.action, {
+                                method: 'POST',
+                                headers: {
+                                    'Accept': 'application/json'
+                                }
+                            });
+                            
+                            const data = await response.json();
+                            
+                            if (response.ok) {
+                                // Start polling for status
+                                const statusInterval = setInterval(async () => {
+                                    try {
+                                        const statusResponse = await fetch("{{ url_for('stem_status', song_id=song.id) }}");
+                                        const statusData = await statusResponse.json();
+                                        
+                                        if (statusData.status === 'error') {
+                                            clearInterval(statusInterval);
+                                            statusMessage.textContent = statusData.message;
+                                            status.classList.remove('alert-info');
+                                            status.classList.add('alert-danger');
+                                            setTimeout(() => location.reload(), 3000);
+                                        } else if (statusData.status === 'complete') {
+                                            clearInterval(statusInterval);
+                                            statusMessage.textContent = 'Stem separation completed successfully!';
+                                            status.classList.remove('alert-info');
+                                            status.classList.add('alert-success');
+                                            setTimeout(() => location.reload(), 2000);
+                                        } else {
+                                            statusMessage.textContent = statusData.message;
+                                        }
+                                    } catch (error) {
+                                        console.error('Status check error:', error);
+                                        clearInterval(statusInterval);
+                                        location.reload();
+                                    }
+                                }, 2000);
+
+                                // Cleanup on page unload
+                                window.addEventListener('beforeunload', function() {
+                                    clearInterval(statusInterval);
+                                });
+                            } else {
+                                throw new Error(data.message || 'Failed to start stem processing');
+                            }
+                        } catch (error) {
+                            console.error('Error:', error);
+                            status.classList.remove('alert-info');
+                            status.classList.add('alert-danger');
+                            statusMessage.textContent = error.message || 'An error occurred while processing stems';
+                            
+                            // Reset button state
+                            btn.disabled = false;
+                            btn.querySelector('.normal-state').classList.remove('d-none');
+                            btn.querySelector('.loading-state').classList.add('d-none');
+                            
+                            setTimeout(() => {
+                                status.classList.add('d-none');
+                            }, 5000);
+                        }
+                    });
+                    </script>
                     {% endif %}
 
                     {% if song.processing_stems %}
@@ -160,11 +273,11 @@
                                 if (data.status === 'error') {
                                     statusElement.textContent = data.message;
                                     clearInterval(statusInterval);
-                                    location.reload();
+                                    setTimeout(() => location.reload(), 3000);
                                 } else if (data.status === 'complete') {
-                                    statusElement.textContent = data.message;
+                                    statusElement.textContent = 'Stem separation completed successfully!';
                                     clearInterval(statusInterval);
-                                    location.reload();
+                                    setTimeout(() => location.reload(), 2000);
                                 } else {
                                     statusElement.textContent = data.message;
                                 }
