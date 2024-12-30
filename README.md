@@ -1,73 +1,51 @@
-# MusicMagic
+# MusicMagic 🎵
 
-A Flask web application that allows users to download songs from various platforms (YouTube, SoundCloud, etc.) or upload their own MP3 files. The application includes user authentication with admin approval system.
+A web application that lets you download music and split it into separate instrument tracks using AI.
 
 ## Features
 
+- Download music from various sources
+- Split songs into stems (vocals, drums, bass, guitar, piano, other)
+- Create custom mixes by combining stems
 - User authentication with admin approval system
-- Download songs from various platforms using yt-dlp
-- Upload MP3 files
-- View song information and manage your music library
-- Admin dashboard for managing user approvals
 
-## Requirements
+## Quick Start
 
-- Python 3.8 or higher
-- FFmpeg (for audio conversion)
-
-## Installation
-
-1. Clone the repository:
+1. Clone and install dependencies:
 ```bash
 git clone https://github.com/yourusername/musicmagic.git
 cd musicmagic
-```
-
-2. Create a virtual environment and install dependencies:
-```bash
-python -m venv venv
-.\venv\Scripts\activate  # Windows
-source venv/bin/activate  # Linux/Mac
+python -m venv .venv
+.venv\Scripts\activate  # Windows
+source .venv/bin/activate  # Unix/MacOS
+pip install uv
 uv pip install -r requirements.txt
 ```
 
-3. Install FFmpeg:
-- Windows: Download from https://ffmpeg.org/download.html and add to PATH
-- Linux: `sudo apt-get install ffmpeg`
-- Mac: `brew install ffmpeg`
+2. Create a `.env` file:
+```
+REPLICATE_API_TOKEN=your_token_here
+```
+Get your token from [Replicate](https://replicate.com)
 
-4. Create the database:
+3. Run the app:
 ```bash
-python
->>> from app import app, db
->>> with app.app_context():
-...     db.create_all()
+flask run
 ```
 
-5. Run the application:
-```bash
-python app.py
-```
+4. Visit `http://localhost:5000` and register - the first user to register becomes admin!
 
-The application will be available at `http://localhost:5000`
+## Important Notes
 
-## Initial Setup
+- The first user to register automatically becomes admin and can approve other users
+- You need a Replicate API token for stem separation
+- Maximum file size: 16MB
+- Supported formats: MP3
+- Stem separation takes several minutes per song
 
-1. The first user to register with email `admin@example.com` will automatically become an admin
-2. The admin can then approve other users through the admin dashboard
-3. Approved users can start downloading or uploading songs
+## Tech Stack
 
-## Usage
-
-1. Register an account and wait for admin approval
-2. Once approved, log in to access the dashboard
-3. Download songs by providing URLs from supported platforms
-4. Or upload your own MP3 files
-5. View song information and manage your library
-
-## Security Notes
-
-- Change the default admin credentials in production
-- Set up proper environment variables for sensitive data
-- Configure proper file upload limits based on your server capacity
-- Implement additional security measures for production deployment 
+- Backend: Flask + SQLite
+- Frontend: Bootstrap 5
+- AI: Demucs (via Replicate)
+- Audio: FFmpeg 
