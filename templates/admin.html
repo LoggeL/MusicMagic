@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Dashboard{% endblock %}
+
+{% block content %}
+<h2 class="mb-4">Admin Dashboard</h2>
+
+<div class="card">
+    <div class="card-header">
+        <h4 class="mb-0">Pending User Approvals</h4>
+    </div>
+    <div class="card-body">
+        {% if pending_users %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Email</th>
+                            <th>Registration Date</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in pending_users %}
+                            <tr>
+                                <td>{{ user.email }}</td>
+                                <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                                <td>
+                                    <a href="{{ url_for('approve_user', user_id=user.id) }}" 
+                                       class="btn btn-success btn-sm">
+                                        <i class="fas fa-check me-2"></i>Approve
+                                    </a>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        {% else %}
+            <div class="alert alert-info">
+                <i class="fas fa-info-circle me-2"></i>No pending user approvals.
+            </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %} 

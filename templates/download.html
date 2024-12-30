@@ -1,0 +1,201 @@
+{% extends "base.html" %}
+
+{% block title %}Download Song{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">Download Song</h4>
+            </div>
+            <div class="card-body">
+                <!-- Public Content Notice -->
+                <div class="alert alert-info mb-4">
+                    <i class="fas fa-info-circle me-2"></i>
+                    <strong>Important:</strong> Only public content can be downloaded. Private or authenticated content is not supported.
+                </div>
+
+                <form method="POST" class="mb-4" id="downloadForm">
+                    <div class="mb-3">
+                        <label for="url" class="form-label">Enter URL</label>
+                        <input type="url" class="form-control" id="url" name="url" required
+                               placeholder="Enter URL from YouTube, SoundCloud, or other supported platforms">
+                        <div class="form-text">Make sure the content is publicly accessible.</div>
+                    </div>
+                    <button type="submit" class="btn btn-primary" id="downloadBtn">
+                        <span class="normal-state">
+                            <i class="fas fa-download me-2"></i>Download
+                        </span>
+                        <span class="loading-state d-none">
+                            <i class="fas fa-spinner fa-spin me-2"></i>Processing...
+                        </span>
+                    </button>
+                </form>
+
+                <!-- Download Progress -->
+                <div id="downloadProgress" class="d-none">
+                    <div class="progress mb-2" style="height: 20px;">
+                        <div class="progress-bar progress-bar-striped progress-bar-animated" 
+                             role="progressbar" style="width: 0%"
+                             aria-valuenow="0" aria-valuemin="0" aria-valuemax="100">
+                            <span class="progress-text">Initializing...</span>
+                        </div>
+                    </div>
+                    <div class="text-center text-muted small mt-2">
+                        <i class="fas fa-info-circle me-1"></i>
+                        <span class="status-text">Preparing download...</span>
+                    </div>
+                    <div class="text-center text-muted small mt-1">
+                        <i class="fas fa-exclamation-circle me-1"></i>
+                        Please do not close this page until the download is complete
+                    </div>
+                </div>
+
+                <div class="accordion mt-4" id="platformInfo">
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#supportedPlatforms">
+                                <i class="fas fa-info-circle me-2"></i>Supported Platforms
+                            </button>
+                        </h2>
+                        <div id="supportedPlatforms" class="accordion-collapse collapse show">
+                            <div class="accordion-body">
+                                <div class="row g-3">
+                                    <div class="col-md-6">
+                                        <div class="card h-100 border-0 shadow-sm">
+                                            <div class="card-body">
+                                                <h6 class="card-title">
+                                                    <i class="fab fa-youtube text-danger me-2"></i>YouTube
+                                                </h6>
+                                                <p class="card-text small">Supports regular videos and music. Works best with public content.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card h-100 border-0 shadow-sm">
+                                            <div class="card-body">
+                                                <h6 class="card-title">
+                                                    <i class="fab fa-soundcloud text-warning me-2"></i>SoundCloud
+                                                </h6>
+                                                <p class="card-text small">Works with public tracks and playlists.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card h-100 border-0 shadow-sm">
+                                            <div class="card-body">
+                                                <h6 class="card-title">
+                                                    <i class="fab fa-bandcamp text-info me-2"></i>Bandcamp
+                                                </h6>
+                                                <p class="card-text small">Supports tracks and albums.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="card h-100 border-0 shadow-sm">
+                                            <div class="card-body">
+                                                <h6 class="card-title">
+                                                    <i class="fas fa-music text-success me-2"></i>Other Platforms
+                                                </h6>
+                                                <p class="card-text small">Many other platforms supported. Content must be public.</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="accordion-item">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#troubleshooting">
+                                <i class="fas fa-wrench me-2"></i>Troubleshooting
+                            </button>
+                        </h2>
+                        <div id="troubleshooting" class="accordion-collapse collapse">
+                            <div class="accordion-body">
+                                <h6 class="mb-3">Common Issues:</h6>
+                                <ul class="list-unstyled">
+                                    <li class="mb-2">
+                                        <i class="fas fa-lock text-warning me-2"></i>
+                                        <strong>Private Content:</strong>
+                                        <p class="ms-4 mb-2 small">Content must be publicly accessible. Private or restricted content cannot be downloaded.</p>
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-clock text-warning me-2"></i>
+                                        <strong>Rate Limits:</strong>
+                                        <p class="ms-4 mb-2 small">Some platforms may temporarily block downloads if too many requests are made. Wait a few minutes and try again.</p>
+                                    </li>
+                                    <li class="mb-2">
+                                        <i class="fas fa-exclamation-triangle text-warning me-2"></i>
+                                        <strong>Invalid URLs:</strong>
+                                        <p class="ms-4 mb-2 small">Make sure the URL is correct and points directly to the content.</p>
+                                    </li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="text-center mt-4">
+                    <p>Want to upload your own MP3 file instead?</p>
+                    <a href="{{ url_for('upload_song') }}" class="btn btn-success">
+                        <i class="fas fa-upload me-2"></i>Upload MP3
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.getElementById('downloadForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const form = this;
+    const downloadBtn = document.getElementById('downloadBtn');
+    const downloadProgress = document.getElementById('downloadProgress');
+    const progressBar = downloadProgress.querySelector('.progress-bar');
+    const statusText = downloadProgress.querySelector('.status-text');
+    
+    // Show loading state
+    downloadBtn.disabled = true;
+    downloadBtn.querySelector('.normal-state').classList.add('d-none');
+    downloadBtn.querySelector('.loading-state').classList.remove('d-none');
+    downloadProgress.classList.remove('d-none');
+
+    // Submit the form
+    fetch(form.action, {
+        method: 'POST',
+        body: new FormData(form)
+    })
+    .then(response => {
+        if (response.redirected) {
+            window.location.href = response.url;
+        } else {
+            // Reset UI if not redirected
+            downloadBtn.disabled = false;
+            downloadBtn.querySelector('.normal-state').classList.remove('d-none');
+            downloadBtn.querySelector('.loading-state').classList.add('d-none');
+            downloadProgress.classList.add('d-none');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        // Show error state
+        progressBar.classList.add('bg-danger');
+        statusText.textContent = 'An error occurred during download';
+        
+        // Reset after 3 seconds
+        setTimeout(() => {
+            downloadBtn.disabled = false;
+            downloadBtn.querySelector('.normal-state').classList.remove('d-none');
+            downloadBtn.querySelector('.loading-state').classList.add('d-none');
+            downloadProgress.classList.add('d-none');
+            progressBar.classList.remove('bg-danger');
+        }, 3000);
+    });
+});
+</script>
+{% endblock %} 

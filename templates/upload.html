@@ -1,0 +1,45 @@
+{% extends "base.html" %}
+
+{% block title %}Upload Song{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h4 class="mb-0">Upload MP3</h4>
+            </div>
+            <div class="card-body">
+                <form method="POST" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label for="file" class="form-label">Choose MP3 File</label>
+                        <input type="file" class="form-control" id="file" name="file" accept=".mp3" required>
+                        <div class="form-text">Maximum file size: 16MB</div>
+                    </div>
+                    <button type="submit" class="btn btn-success">
+                        <i class="fas fa-upload me-2"></i>Upload
+                    </button>
+                </form>
+
+                <hr>
+
+                <div class="alert alert-info">
+                    <h5><i class="fas fa-info-circle me-2"></i>Upload Guidelines</h5>
+                    <ul class="mb-0">
+                        <li>Only MP3 files are supported</li>
+                        <li>Maximum file size is 16MB</li>
+                        <li>Make sure you have the rights to use the audio file</li>
+                    </ul>
+                </div>
+
+                <div class="text-center mt-3">
+                    <p>Want to download a song from YouTube or other platforms instead?</p>
+                    <a href="{{ url_for('download_song') }}" class="btn btn-primary">
+                        <i class="fas fa-download me-2"></i>Download Song
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 

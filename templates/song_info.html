@@ -1,0 +1,192 @@
+{% extends "base.html" %}
+
+{% block title %}{{ song.title }}{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0">{{ song.title }}</h4>
+                    <a href="{{ url_for('download_file', song_id=song.id) }}" class="btn btn-primary btn-sm">
+                        <i class="fas fa-download me-1"></i>Download Original
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h5>Song Details</h5>
+                        <p class="mb-1"><strong>Duration:</strong> {{ "%.2f"|format(song.duration/60) }} minutes</p>
+                        <p class="mb-0"><strong>Added:</strong> {{ song.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</p>
+                    </div>
+
+                    {% if song.has_stems %}
+                    <div class="mb-4">
+                        <h5>Download Individual Stems</h5>
+                        <div class="list-group">
+                            {% if song.vocals_stem %}
+                            <a href="{{ url_for('download_stem', song_id=song.id, stem_type='vocals') }}" class="list-group-item list-group-item-action">
+                                <i class="fas fa-microphone me-2"></i>Vocals
+                            </a>
+                            {% endif %}
+                            {% if song.drums_stem %}
+                            <a href="{{ url_for('download_stem', song_id=song.id, stem_type='drums') }}" class="list-group-item list-group-item-action">
+                                <i class="fas fa-drum me-2"></i>Drums
+                            </a>
+                            {% endif %}
+                            {% if song.bass_stem %}
+                            <a href="{{ url_for('download_stem', song_id=song.id, stem_type='bass') }}" class="list-group-item list-group-item-action">
+                                <i class="fas fa-guitar me-2"></i>Bass
+                            </a>
+                            {% endif %}
+                            {% if song.other_stem %}
+                            <a href="{{ url_for('download_stem', song_id=song.id, stem_type='other') }}" class="list-group-item list-group-item-action">
+                                <i class="fas fa-music me-2"></i>Other/Instrumental
+                            </a>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <h5>Download Custom Mix</h5>
+                        <form action="{{ url_for('download_merged_stems', song_id=song.id) }}" method="POST" id="mixForm">
+                            <div class="mb-3">
+                                <div class="form-check">
+                                    {% if song.vocals_stem %}
+                                    <div class="mb-2">
+                                        <input class="form-check-input" type="checkbox" name="stems[]" value="vocals" id="vocalsCheck">
+                                        <label class="form-check-label" for="vocalsCheck">
+                                            <i class="fas fa-microphone me-2"></i>Vocals
+                                        </label>
+                                    </div>
+                                    {% endif %}
+                                    {% if song.drums_stem %}
+                                    <div class="mb-2">
+                                        <input class="form-check-input" type="checkbox" name="stems[]" value="drums" id="drumsCheck">
+                                        <label class="form-check-label" for="drumsCheck">
+                                            <i class="fas fa-drum me-2"></i>Drums
+                                        </label>
+                                    </div>
+                                    {% endif %}
+                                    {% if song.bass_stem %}
+                                    <div class="mb-2">
+                                        <input class="form-check-input" type="checkbox" name="stems[]" value="bass" id="bassCheck">
+                                        <label class="form-check-label" for="bassCheck">
+                                            <i class="fas fa-guitar me-2"></i>Bass
+                                        </label>
+                                    </div>
+                                    {% endif %}
+                                    {% if song.other_stem %}
+                                    <div class="mb-2">
+                                        <input class="form-check-input" type="checkbox" name="stems[]" value="other" id="otherCheck">
+                                        <label class="form-check-label" for="otherCheck">
+                                            <i class="fas fa-music me-2"></i>Other/Instrumental
+                                        </label>
+                                    </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            <button type="submit" class="btn btn-success" id="downloadMixBtn">
+                                <span class="normal-state">
+                                    <i class="fas fa-download me-2"></i>Download Mix
+                                </span>
+                                <span class="loading-state d-none">
+                                    <i class="fas fa-spinner fa-spin me-2"></i>Generating Mix...
+                                </span>
+                            </button>
+                        </form>
+                        <div id="mixStatus" class="alert alert-info mt-3 d-none">
+                            <i class="fas fa-spinner fa-spin me-2"></i>
+                            <span>Generating custom mix... This may take a few moments.</span>
+                        </div>
+                    </div>
+
+                    <script>
+                    document.getElementById('mixForm').addEventListener('submit', function(e) {
+                        // Check if at least one stem is selected
+                        const selectedStems = document.querySelectorAll('input[name="stems[]"]:checked');
+                        if (selectedStems.length === 0) {
+                            e.preventDefault();
+                            alert('Please select at least one stem for the mix.');
+                            return;
+                        }
+
+                        // Show loading state
+                        const btn = document.getElementById('downloadMixBtn');
+                        const status = document.getElementById('mixStatus');
+                        btn.disabled = true;
+                        btn.querySelector('.normal-state').classList.add('d-none');
+                        btn.querySelector('.loading-state').classList.remove('d-none');
+                        status.classList.remove('d-none');
+
+                        // Reset state after download starts (browser will handle the actual download)
+                        setTimeout(() => {
+                            btn.disabled = false;
+                            btn.querySelector('.normal-state').classList.remove('d-none');
+                            btn.querySelector('.loading-state').classList.add('d-none');
+                            status.classList.add('d-none');
+                        }, 3000);
+                    });
+                    </script>
+                    {% endif %}
+
+                    {% if not song.has_stems and not song.processing_stems %}
+                    <div class="mb-4">
+                        <h5>Stem Separation</h5>
+                        <p>Split this song into separate instrument tracks.</p>
+                        <form action="{{ url_for('process_stems', song_id=song.id) }}" method="POST">
+                            <button type="submit" class="btn btn-primary" id="processStemsBtn">
+                                <i class="fas fa-layer-group me-2"></i>Process Stems
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
+
+                    {% if song.processing_stems %}
+                    <div class="mb-4">
+                        <h5>Processing Status</h5>
+                        <div class="alert alert-info">
+                            <i class="fas fa-spinner fa-spin me-2"></i>
+                            <span id="processingStatus">Processing stems...</span>
+                        </div>
+                    </div>
+
+                    <script>
+                    function checkStemStatus() {
+                        fetch("{{ url_for('stem_status', song_id=song.id) }}")
+                            .then(response => response.json())
+                            .then(data => {
+                                const statusElement = document.getElementById('processingStatus');
+                                if (data.status === 'error') {
+                                    statusElement.textContent = data.message;
+                                    clearInterval(statusInterval);
+                                    location.reload();
+                                } else if (data.status === 'complete') {
+                                    statusElement.textContent = data.message;
+                                    clearInterval(statusInterval);
+                                    location.reload();
+                                } else {
+                                    statusElement.textContent = data.message;
+                                }
+                            })
+                            .catch(error => {
+                                console.error('Error:', error);
+                                clearInterval(statusInterval);
+                                location.reload();
+                            });
+                    }
+
+                    const statusInterval = setInterval(checkStemStatus, 2000);
+
+                    // Cleanup on page unload
+                    window.addEventListener('beforeunload', function() {
+                        clearInterval(statusInterval);
+                    });
+                    </script>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %} 
