@@ -25,6 +25,10 @@ uv pip install -r requirements.txt
 2. Create a `.env` file:
 ```
 REPLICATE_API_TOKEN=your_token_here
+PORT=5000  # Optional, defaults to 5000
+FLASK_DEBUG=true  # Optional, defaults to false
+FLASK_SECRET_KEY=your_secret_key  # Optional, auto-generated if not set
+DATABASE_URL=sqlite:///music.db  # Optional, defaults to SQLite
 ```
 Get your token from [Replicate](https://replicate.com)
 

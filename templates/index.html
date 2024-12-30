@@ -1,68 +1,134 @@
 {% extends "base.html" %}
 
-{% block title %}Home{% endblock %}
+{% block title %}Welcome{% endblock %}
 
 {% block content %}
-<div class="text-center py-5">
-    <h1 class="display-4 mb-4">Welcome to MusicMagic</h1>
-    <p class="lead mb-4">Download songs from various platforms or upload your own MP3 files</p>
-    
+<!-- Hero Section -->
+<div class="container-fluid px-0">
+    <div class="bg-light">
+        <div class="container">
+            <div class="row min-vh-75 align-items-center py-5">
+                <div class="col-lg-8 col-md-10 mx-auto text-center">
+                    <img src="{{ url_for('static', filename='logo.svg') }}" alt="MusicMagic Logo" class="mb-4" style="height: 120px;">
+                    <h1 class="display-4 mb-3 fw-bold">Welcome to MusicMagic</h1>
+                    <p class="lead mb-4 text-muted">Transform your music with AI-powered stem separation technology.</p>
+                    
+                    {% if not current_user.is_authenticated %}
+                    <div class="mb-5">
+                        <a href="{{ url_for('register') }}" class="btn btn-primary btn-lg px-4 me-3">Get Started</a>
+                        <a href="{{ url_for('login') }}" class="btn btn-outline-primary btn-lg px-4">Login</a>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Features Section -->
+    <div class="container py-5">
+        <div class="row g-4 justify-content-center">
+            <div class="col-lg-4 col-md-6">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="feature-icon mb-3">
+                            <i class="fas fa-download fa-3x" style="color: var(--primary-color)"></i>
+                        </div>
+                        <h3 class="card-title h4 mb-3">Download Music</h3>
+                        <p class="card-text text-muted">Download music from various sources or upload your own MP3 files to your personal library.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="feature-icon mb-3">
+                            <i class="fas fa-layer-group fa-3x" style="color: var(--primary-color)"></i>
+                        </div>
+                        <h3 class="card-title h4 mb-3">Separate Stems</h3>
+                        <p class="card-text text-muted">Split your songs into individual instrument tracks using advanced AI technology.</p>
+                    </div>
+                </div>
+            </div>
+            <div class="col-lg-4 col-md-6">
+                <div class="card h-100 border-0 shadow-sm">
+                    <div class="card-body text-center p-4">
+                        <div class="feature-icon mb-3">
+                            <i class="fas fa-sliders fa-3x" style="color: var(--primary-color)"></i>
+                        </div>
+                        <h3 class="card-title h4 mb-3">Create Custom Mixes</h3>
+                        <p class="card-text text-muted">Combine different stems to create your own unique mixes and arrangements.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Stems Section -->
+    <div class="bg-light py-5">
+        <div class="container">
+            <div class="row justify-content-center">
+                <div class="col-lg-10">
+                    <h3 class="text-center mb-5">Available Stems</h3>
+                    <div class="row g-4 justify-content-center text-center">
+                        <div class="col-lg-2 col-md-3 col-sm-4 col-6">
+                            <div class="p-3">
+                                <i class="fas fa-microphone fa-2x mb-3" style="color: var(--primary-color)"></i>
+                                <h5 class="mb-0">Vocals</h5>
+                            </div>
+                        </div>
+                        <div class="col-lg-2 col-md-3 col-sm-4 col-6">
+                            <div class="p-3">
+                                <i class="fas fa-drum fa-2x mb-3" style="color: var(--primary-color)"></i>
+                                <h5 class="mb-0">Drums</h5>
+                            </div>
+                        </div>
+                        <div class="col-lg-2 col-md-3 col-sm-4 col-6">
+                            <div class="p-3">
+                                <i class="fas fa-guitar fa-2x mb-3" style="color: var(--primary-color)"></i>
+                                <h5 class="mb-0">Bass</h5>
+                            </div>
+                        </div>
+                        <div class="col-lg-2 col-md-3 col-sm-4 col-6">
+                            <div class="p-3">
+                                <i class="fas fa-music fa-2x mb-3" style="color: var(--primary-color)"></i>
+                                <h5 class="mb-0">Piano</h5>
+                            </div>
+                        </div>
+                        <div class="col-lg-2 col-md-3 col-sm-4 col-6">
+                            <div class="p-3">
+                                <i class="fas fa-guitar fa-2x mb-3" style="color: var(--primary-color)"></i>
+                                <h5 class="mb-0">Guitar</h5>
+                            </div>
+                        </div>
+                        <div class="col-lg-2 col-md-3 col-sm-4 col-6">
+                            <div class="p-3">
+                                <i class="fas fa-music fa-2x mb-3" style="color: var(--primary-color)"></i>
+                                <h5 class="mb-0">Other</h5>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     {% if current_user.is_authenticated %}
-        <div class="row justify-content-center">
-            <div class="col-md-4">
-                <a href="{{ url_for('download_song') }}" class="btn btn-primary btn-lg w-100 mb-3">
-                    <i class="fas fa-download me-2"></i>Download Song
-                </a>
-            </div>
-            <div class="col-md-4">
-                <a href="{{ url_for('upload_song') }}" class="btn btn-success btn-lg w-100 mb-3">
-                    <i class="fas fa-upload me-2"></i>Upload MP3
-                </a>
+    <div class="container">
+        <div class="row py-5 text-center">
+            <div class="col-12">
+                <a href="{{ url_for('dashboard') }}" class="btn btn-primary btn-lg px-5">Go to Dashboard</a>
             </div>
         </div>
-    {% else %}
-        <div class="row justify-content-center">
-            <div class="col-md-4">
-                <a href="{{ url_for('login') }}" class="btn btn-primary btn-lg w-100 mb-3">
-                    <i class="fas fa-sign-in-alt me-2"></i>Login
-                </a>
-            </div>
-            <div class="col-md-4">
-                <a href="{{ url_for('register') }}" class="btn btn-success btn-lg w-100 mb-3">
-                    <i class="fas fa-user-plus me-2"></i>Register
-                </a>
-            </div>
-        </div>
+    </div>
     {% endif %}
 </div>
 
-<div class="row mt-5">
-    <div class="col-md-4">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-music fa-3x mb-3 text-primary"></i>
-                <h5 class="card-title">Multiple Platforms</h5>
-                <p class="card-text">Download music from various platforms including YouTube, SoundCloud, and more.</p>
-            </div>
-        </div>
+<footer class="py-5 bg-light">
+    <div class="container text-center">
+        <p class="text-muted mb-0">
+            Powered by <a href="https://github.com/facebookresearch/demucs" target="_blank" rel="noopener" class="text-decoration-none">Demucs</a> 
+            and <a href="https://replicate.com" target="_blank" rel="noopener" class="text-decoration-none">Replicate</a>
+        </p>
     </div>
-    <div class="col-md-4">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-upload fa-3x mb-3 text-success"></i>
-                <h5 class="card-title">Upload Your Music</h5>
-                <p class="card-text">Already have MP3 files? Upload them directly to process and manage them.</p>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-4">
-        <div class="card h-100">
-            <div class="card-body text-center">
-                <i class="fas fa-info-circle fa-3x mb-3 text-info"></i>
-                <h5 class="card-title">Detailed Information</h5>
-                <p class="card-text">View detailed information about your music files and manage them easily.</p>
-            </div>
-        </div>
-    </div>
-</div>
+</footer>
 {% endblock %} 
