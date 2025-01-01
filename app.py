@@ -367,8 +367,11 @@ def logout():
 @app.route('/process_stems/<int:song_id>', methods=['POST'])
 @login_required
 def process_stems(song_id):
+    app.logger.info(f"Process stems request received for song {song_id}")
+    
     song = Song.query.get_or_404(song_id)
     if song.user_id != current_user.id and not current_user.is_admin:
+        app.logger.warning(f"Unauthorized stem processing attempt for song {song_id}")
         return jsonify({'error': 'Unauthorized'}), 403
     
     # Check if stems already exist
@@ -376,11 +379,14 @@ def process_stems(song_id):
         song.vocals_stem, song.drums_stem, song.bass_stem, song.other_stem,
         song.piano_stem, song.guitar_stem
     ]):
+        app.logger.info(f"Stems already exist for song {song_id}")
         return jsonify({
             'status': 'success',
             'message': 'All stems already available',
             'cached': True
         })
+    
+    app.logger.info(f"Starting stem processing for song {song_id}")
     
     # Mark as processing
     song.processing_stems = True
@@ -388,24 +394,38 @@ def process_stems(song_id):
     db.session.commit()
 
     def process_stems_async():
+        thread_id = threading.get_ident()
+        app.logger.info(f"Background thread {thread_id} started for song {song_id}")
+        
         with app.app_context():
+            # Create a new session for this thread
+            session = db.session()
             try:
+                # Get song in this thread's session
+                song_thread = session.get(Song, song_id)
+                if not song_thread:
+                    app.logger.error(f"Could not find song {song_id} in thread session")
+                    return
+                    
+                app.logger.info(f"Processing stems in background for song {song_id}")
+                
                 # Get the full path of the audio file
-                audio_path = os.path.join(app.config['UPLOAD_FOLDER'], song.filename)
+                audio_path = os.path.join(app.config['UPLOAD_FOLDER'], song_thread.filename)
                 
                 # Create output directory for stems
-                stem_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'stems', str(song.id))
+                stem_dir = os.path.join(app.config['UPLOAD_FOLDER'], 'stems', str(song_thread.id))
                 os.makedirs(stem_dir, exist_ok=True)
                 
                 # Update status
-                song.stem_error = "Initializing AI model for stem separation..."
-                db.session.commit()
+                song_thread.stem_error = "Initializing AI model for stem separation..."
+                session.commit()
                 
+                app.logger.info(f"Calling Replicate API for song {song_id}")
                 # Open and read the audio file
                 with open(audio_path, 'rb') as audio_file:
                     # Run Replicate API with optimized parameters
-                    song.stem_error = "Running AI model for stem separation (this may take several minutes)..."
-                    db.session.commit()
+                    song_thread.stem_error = "Running AI model for stem separation (this may take several minutes)..."
+                    session.commit()
                     
                     output = replicate.run(
                         "ryan5453/demucs:7a9db77ed93f8f4f7e233a94d8519a867fbaa9c6d16ea5b53c1394f1557f9c61",
@@ -424,63 +444,92 @@ def process_stems(song_id):
                             "output_format": "mp3",
                         }
                     )
+
+                    print(output)
+                    
+                    if not output:
+                        raise Exception("Replicate API returned no output. Please check your API key and try again.")
+                    
+                    # Verify the output has the expected structure
+                    missing_stems = [stem for stem in ['vocals', 'drums', 'bass', 'other', 'piano', 'guitar'] 
+                                   if stem not in output or not output[stem]]
+                    if missing_stems:
+                        raise Exception(f"Missing stems in API output: {', '.join(missing_stems)}")
+                
+                app.logger.info(f"Replicate API call completed for song {song_id}")
+                app.logger.info(f"API Output: {json.dumps(output)}")  # Log the output for debugging
                 
                 # Process and save all stems
                 stem_types = ['vocals', 'drums', 'bass', 'other', 'piano', 'guitar']
                 total_stems = len(stem_types)
                 for i, stem_type in enumerate(stem_types, 1):
                     if stem_type in output and output[stem_type]:
-                        song.stem_error = f"Downloading {stem_type.capitalize()} stem ({i}/{total_stems})..."
-                        db.session.commit()
+                        app.logger.info(f"Downloading {stem_type} stem for song {song_id}")
+                        song_thread.stem_error = f"Downloading {stem_type.capitalize()} stem ({i}/{total_stems})..."
+                        session.commit()
                         
                         # Download and save stem
                         response = requests.get(output[stem_type], timeout=30)
                         response.raise_for_status()
                         
-                        stem_filename = f"{os.path.splitext(song.filename)[0]}_{stem_type}.mp3"
+                        stem_filename = f"{os.path.splitext(song_thread.filename)[0]}_{stem_type}.mp3"
                         stem_path = os.path.join(stem_dir, stem_filename)
                         
                         with open(stem_path, 'wb') as f:
                             f.write(response.content)
                         
-                        setattr(song, f"{stem_type}_stem", stem_filename)
+                        setattr(song_thread, f"{stem_type}_stem", stem_filename)
                         
                         # For vocals, also save instrumental
                         if stem_type == 'vocals' and 'no_vocals' in output:
-                            song.stem_error = "Downloading instrumental track..."
-                            db.session.commit()
+                            app.logger.info(f"Downloading instrumental track for song {song_id}")
+                            song_thread.stem_error = "Downloading instrumental track..."
+                            session.commit()
                             
                             response = requests.get(output['no_vocals'], timeout=30)
                             response.raise_for_status()
                             
-                            inst_filename = f"{os.path.splitext(song.filename)[0]}_instrumental.mp3"
+                            inst_filename = f"{os.path.splitext(song_thread.filename)[0]}_instrumental.mp3"
                             inst_path = os.path.join(stem_dir, inst_filename)
                             
                             with open(inst_path, 'wb') as f:
                                 f.write(response.content)
                 
                 # Mark processing as complete
-                song.has_stems = True
-                song.processing_stems = False
-                song.stem_error = None
-                db.session.commit()
+                app.logger.info(f"Stem processing completed successfully for song {song_id}")
+                song_thread.has_stems = True
+                song_thread.processing_stems = False
+                song_thread.stem_error = None
+                session.commit()
                 
             except Exception as e:
                 error_message = str(e)
+                app.logger.error(f"Error processing stems for song {song_id}: {error_message}")
+                
                 if "exceeded the rate limit" in error_message.lower():
                     error_message = "Rate limit exceeded. Please try again in a few minutes."
                 elif "invalid api key" in error_message.lower():
                     error_message = "API configuration error. Please contact support."
                 
-                song.processing_stems = False
-                song.stem_error = error_message
-                db.session.commit()
+                try:
+                    # Get song again in case the session was invalidated
+                    song_thread = session.get(Song, song_id)
+                    if song_thread:
+                        song_thread.processing_stems = False
+                        song_thread.stem_error = error_message
+                        session.commit()
+                except Exception as inner_e:
+                    app.logger.error(f"Error updating song status: {str(inner_e)}")
+                
                 app.logger.error(f"Stem processing error for song {song_id}: {error_message}")
+            finally:
+                session.close()
 
     # Start processing in background thread
     thread = threading.Thread(target=process_stems_async)
     thread.daemon = True
     thread.start()
+    app.logger.info(f"Background thread started for song {song_id}")
     
     return jsonify({
         'status': 'processing',
